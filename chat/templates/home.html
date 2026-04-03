@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SayaTech — Решения для снижения CO₂</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans">
+
+    <!-- Background Effects -->
+    <div class="fixed inset-0 opacity-10 pointer-events-none z-0 bg-gradient-to-br from-green-500 to-green-800"></div>
+
+    <!-- Main Container -->
+    <div class="relative z-10 flex flex-col min-h-screen">
+
+        <!-- Header -->
+        <header class="bg-gray-800 bg-opacity-75 backdrop-blur-md shadow-md">
+            <div class="container mx-auto px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center text-2xl shadow-lg">
+                        🌿
+                    </div>
+                    <h1 class="text-2xl font-bold">SayaTech</h1>
+                </div>
+                <button onclick="location.href='/chat'" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg shadow-md">
+                    EcoMind AI
+                </button>
+            </div>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="flex-1 flex flex-col items-center justify-center text-center px-6 py-12">
+            <h2 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-green-600">
+                Решения для снижения выбросов CO₂
+            </h2>
+            <p class="mt-4 text-gray-300 max-w-2xl">
+                Мы предлагаем инновационные решения для борьбы с большими выбросами CO₂ от автомобилей. 
+                Наши технологии включают датчики для мониторинга выбросов и искусственный интеллект для анализа данных.
+            </p>
+        </section>
+
+        <section class="bg-gray-800 bg-opacity-50 py-12">
+            <div class="container mx-auto px-6 text-center">
+                <h3 class="text-2xl font-bold mb-4">Ежедневные выбросы CO₂</h3>
+                {% if chart %}
+                    <img src="data:image/png;base64,{{ chart }}" alt="Диаграмма выбросов CO2" class="mx-auto rounded-lg shadow-lg">
+                {% else %}
+                    <p class="text-gray-400">Не удалось загрузить данные о выбросах CO₂.</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- 3D Model Placeholder -->
+        <section class="bg-gray-800 bg-opacity-50 py-12">
+            <div class="container mx-auto px-6 text-center">
+                <h3 class="text-2xl font-bold mb-4">Наш датчик выбросов CO₂</h3>
+                <p class="text-gray-400 mb-8">
+                    Здесь будет размещена 3D-модель нашего датчика, который помогает отслеживать выбросы CO₂ в реальном времени.
+                </p>
+                <div class="w-full h-64 bg-gray-700 rounded-lg flex items-center justify-center text-gray-500" id="container">
+                    [Место для 3D-модели]
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 py-6">
+            <div class="container mx-auto px-6 text-center text-gray-400">
+                <p>&copy; 2026 SayaTech. Все права защищены.</p>
+            </div>
+        </footer>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        const container = document.getElementById('container');
+    
+        // Сцена и камера
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf0f0f0);
+        const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 1, 3);
+    
+        // Рендерер
+        const renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        container.appendChild(renderer.domElement);
+    
+        // Свет
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(5, 10, 7.5);
+        scene.add(light);
+    
+        // Контроллеры для вращения и масштабирования
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 1;
+        controls.maxDistance = 10;
+    
+        // Загрузка модели
+        const loader = new THREE.GLTFLoader();
+        loader.load("{% static 'models/model_v6.glb' %}", function(gltf) {
+            scene.add(gltf.scene);
+        }, undefined, function(error) {
+            console.error(error);
+        });
+    
+        // Анимация
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+    
+        // Поддержка ресайза окна
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    </script>
+</body>
+</html>

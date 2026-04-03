@@ -1,1 +1,0 @@
-"""EcoMind AI Engine"""

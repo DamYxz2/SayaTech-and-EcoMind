@@ -4,7 +4,9 @@ Django settings for EcoMind project.
 
 import os
 from pathlib import Path
+from decouple import config
 
+API_KEY = config('GEMINI_API_KEY')
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = "ecomind-hackathon-secret-key-change-in-production"
