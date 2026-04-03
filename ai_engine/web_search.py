@@ -1,14 +1,3 @@
-"""
-EcoMind Web Search — поиск в интернете без API ключей.
-
-Использует:
-  1. Wikipedia API (бесплатный, без ключей)
-  2. DuckDuckGo Instant Answer API (бесплатный)
-  3. Парсинг Google результатов как fallback
-
-Зависимости: pip install requests beautifulsoup4
-"""
-
 import re
 import logging
 import urllib.parse
@@ -19,7 +8,6 @@ from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
-# Таймаут для всех запросов
 TIMEOUT = 8
 HEADERS = {
     "User-Agent": (
@@ -29,14 +17,8 @@ HEADERS = {
     )
 }
 
-
 def search_wikipedia(query: str, lang: str = "ru") -> Optional[str]:
-    """
-    Поиск в Wikipedia API — полностью бесплатный, без ключей.
-    Возвращает краткое описание статьи.
-    """
     try:
-        # 1. Поиск статьи
         search_url = f"https://{lang}.wikipedia.org/w/api.php"
         params = {
             "action": "query",
@@ -53,14 +35,13 @@ def search_wikipedia(query: str, lang: str = "ru") -> Optional[str]:
         if not results:
             return None
 
-        # 2. Получаем содержимое лучшей статьи
         title = results[0]["title"]
         content_params = {
             "action": "query",
             "titles": title,
             "prop": "extracts",
-            "exintro": True,        # только введение
-            "explaintext": True,    # простой текст без HTML
+            "exintro": True,
+            "explaintext": True,
             "exsectionformat": "plain",
             "format": "json",
             "utf8": 1,
@@ -74,7 +55,6 @@ def search_wikipedia(query: str, lang: str = "ru") -> Optional[str]:
                 continue
             extract = page.get("extract", "")
             if extract:
-                # Обрезаем до разумной длины
                 sentences = extract.split(". ")
                 if len(sentences) > 6:
                     extract = ". ".join(sentences[:6]) + "."
@@ -86,12 +66,7 @@ def search_wikipedia(query: str, lang: str = "ru") -> Optional[str]:
         logger.warning(f"Wikipedia search error: {e}")
         return None
 
-
 def search_duckduckgo(query: str) -> Optional[str]:
-    """
-    DuckDuckGo Instant Answer API — бесплатный, без ключей.
-    Даёт краткие ответы на фактические вопросы.
-    """
     try:
         url = "https://api.duckduckgo.com/"
         params = {
@@ -104,24 +79,19 @@ def search_duckduckgo(query: str) -> Optional[str]:
         resp = requests.get(url, params=params, headers=HEADERS, timeout=TIMEOUT)
         data = resp.json()
 
-        # Проверяем разные поля ответа
-        # Abstract — основное описание
         abstract = data.get("AbstractText", "")
         if abstract and len(abstract) > 50:
             source = data.get("AbstractSource", "")
             return f"**{source}:**\n\n{abstract}"
 
-        # Answer — прямой ответ
         answer = data.get("Answer", "")
         if answer:
             return f"**Ответ:** {answer}"
 
-        # Definition
         definition = data.get("Definition", "")
         if definition:
             return f"**Определение:** {definition}"
 
-        # Related topics
         related = data.get("RelatedTopics", [])
         if related:
             texts = []
@@ -138,12 +108,7 @@ def search_duckduckgo(query: str) -> Optional[str]:
         logger.warning(f"DuckDuckGo search error: {e}")
         return None
 
-
 def search_google_scrape(query: str) -> Optional[str]:
-    """
-    Парсинг результатов Google — fallback вариант.
-    Извлекает сниппеты из поисковой выдачи.
-    """
     try:
         encoded_query = urllib.parse.quote_plus(query)
         url = f"https://www.google.com/search?q={encoded_query}&hl=ru&num=5"
@@ -151,19 +116,14 @@ def search_google_scrape(query: str) -> Optional[str]:
         resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # Ищем блоки с результатами
         snippets = []
 
-        # Featured snippet (блок с прямым ответом)
         featured = soup.select_one("div.hgKElc")
         if featured:
             return f"**Ответ из Google:**\n\n{featured.get_text(strip=True)}"
 
-        # Обычные результаты
         for div in soup.select("div.tF2Cxc, div.g"):
-            # Заголовок
             title_el = div.select_one("h3")
-            # Сниппет
             snippet_el = div.select_one("div.VwiC3b, span.aCOpRe, div.IsZvec")
 
             if snippet_el:
@@ -187,29 +147,15 @@ def search_google_scrape(query: str) -> Optional[str]:
         logger.warning(f"Google scrape error: {e}")
         return None
 
-
 def web_search(query: str) -> dict:
-    """
-    Главная функция поиска — пробует все источники по очереди.
-
-    Returns:
-        {
-            "found": bool,
-            "response": str,
-            "source": str,  # "wikipedia", "duckduckgo", "google", "none"
-        }
-    """
-    # 1. Wikipedia — самый надёжный
     result = search_wikipedia(query)
     if result:
         return {"found": True, "response": result, "source": "wikipedia"}
 
-    # 2. DuckDuckGo — быстрые ответы
     result = search_duckduckgo(query)
     if result:
         return {"found": True, "response": result, "source": "duckduckgo"}
 
-    # 3. Google — fallback
     result = search_google_scrape(query)
     if result:
         return {"found": True, "response": result, "source": "google"}

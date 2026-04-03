@@ -1,15 +1,3 @@
-"""
-EcoMind Train — полный pipeline обучения модели.
-
-Запуск: python ai_engine/train.py
-
-Этапы:
-  1. Загрузка и подготовка данных
-  2. Обучение IntentClassifier (Transformer)
-  3. Построение TF-IDF индекса для семантического поиска
-  4. Сохранение всех артефактов
-"""
-
 import os
 import sys
 import json
@@ -20,39 +8,28 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
-# Добавляем корень проекта в path
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
 from ai_engine.model import IntentClassifier, Tokenizer
 from ai_engine.dataset import EcoDataset, collate_fn
 
-
-# ═══════════════════════════════════════════
-# КОНФИГУРАЦИЯ
-# ═══════════════════════════════════════════
-
 CONFIG = {
     "data_path": os.path.join(PROJECT_ROOT, "ai_engine", "data", "eco_dataset.json"),
     "save_dir": os.path.join(PROJECT_ROOT, "ai_engine", "checkpoints"),
-    # Модель
     "d_model": 128,
     "nhead": 4,
     "num_layers": 2,
     "dim_feedforward": 256,
     "dropout": 0.1,
     "max_len": 64,
-    # Обучение
     "epochs": 100,
     "batch_size": 16,
     "lr": 0.001,
     "weight_decay": 1e-4,
-    # Seed
     "seed": 42,
 }
-
 
 def set_seed(seed: int):
     random.seed(seed)
@@ -61,9 +38,7 @@ def set_seed(seed: int):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-
 def train_intent_classifier():
-    """Обучение нейросетевого классификатора интентов"""
     print("=" * 60)
     print("🌿 EcoMind — Обучение модели")
     print("=" * 60)
@@ -72,7 +47,6 @@ def train_intent_classifier():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\n📍 Устройство: {device}")
 
-    # 1. Загрузка данных
     print("\n📦 Загрузка датасета...")
     tokenizer = Tokenizer()
     dataset = EcoDataset(
@@ -159,12 +133,9 @@ def train_intent_classifier():
     print(f"\n✅ Лучшая accuracy: {best_acc:.1%}")
     return model, tokenizer, dataset
 
-
 def build_tfidf_index(dataset: EcoDataset):
-    """Построение TF-IDF индекса для семантического поиска"""
     print("\n📊 Построение TF-IDF индекса...")
 
-    # Собираем все паттерны с их тегами
     with open(CONFIG["data_path"], "r", encoding="utf-8") as f:
         raw_data = json.load(f)
 
@@ -176,7 +147,7 @@ def build_tfidf_index(dataset: EcoDataset):
             pattern_tags.append(item["tag"])
 
     vectorizer = TfidfVectorizer(
-        analyzer="char_wb",  # Символьные n-граммы — лучше для русского
+        analyzer="char_wb",
         ngram_range=(2, 4),
         max_features=5000,
     )
@@ -187,13 +158,10 @@ def build_tfidf_index(dataset: EcoDataset):
 
     return vectorizer, tfidf_matrix, patterns, pattern_tags
 
-
 def save_all(model, tokenizer, dataset, vectorizer, tfidf_matrix, patterns, pattern_tags):
-    """Сохранение всех компонентов"""
     save_dir = CONFIG["save_dir"]
     os.makedirs(save_dir, exist_ok=True)
 
-    # Модель PyTorch
     model_path = os.path.join(save_dir, "intent_model.pt")
     torch.save(
         {
@@ -213,12 +181,10 @@ def save_all(model, tokenizer, dataset, vectorizer, tfidf_matrix, patterns, patt
     )
     print(f"   💾 Модель: {model_path}")
 
-    # Токенизатор
     tok_path = os.path.join(save_dir, "tokenizer.json")
     tokenizer.save(tok_path)
     print(f"   💾 Токенизатор: {tok_path}")
 
-    # Маппинги
     mappings_path = os.path.join(save_dir, "mappings.json")
     with open(mappings_path, "w", encoding="utf-8") as f:
         json.dump(
@@ -233,7 +199,6 @@ def save_all(model, tokenizer, dataset, vectorizer, tfidf_matrix, patterns, patt
         )
     print(f"   💾 Маппинги: {mappings_path}")
 
-    # TF-IDF
     tfidf_path = os.path.join(save_dir, "tfidf.pkl")
     with open(tfidf_path, "wb") as f:
         pickle.dump(
@@ -247,9 +212,7 @@ def save_all(model, tokenizer, dataset, vectorizer, tfidf_matrix, patterns, patt
         )
     print(f"   💾 TF-IDF: {tfidf_path}")
 
-
 def test_model(model, tokenizer, dataset, vectorizer, tfidf_matrix, patterns, pattern_tags):
-    """Тестирование модели на примерах"""
     from ai_engine.inference import EcoMindEngine
 
     print("\n" + "=" * 60)
@@ -276,21 +239,12 @@ def test_model(model, tokenizer, dataset, vectorizer, tfidf_matrix, patterns, pa
         print(f"   🏷️  Интент: {result['intent']} (confidence: {result['confidence']:.1%})")
         print(f"   📝 Ответ: {result['response'][:100]}...")
 
-
 if __name__ == "__main__":
-    # 1. Обучение нейросети
     model, tokenizer, dataset = train_intent_classifier()
-
-    # 2. TF-IDF индекс
     vectorizer, tfidf_matrix, patterns, pattern_tags = build_tfidf_index(dataset)
-
-    # 3. Сохранение
     print("\n💾 Сохранение модели...")
     save_all(model, tokenizer, dataset, vectorizer, tfidf_matrix, patterns, pattern_tags)
-
-    # 4. Тест
     test_model(model, tokenizer, dataset, vectorizer, tfidf_matrix, patterns, pattern_tags)
-
     print("\n" + "=" * 60)
     print("✅ Обучение завершено! Модель готова к использованию.")
     print("=" * 60)
