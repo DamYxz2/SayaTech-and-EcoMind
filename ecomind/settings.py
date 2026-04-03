@@ -10,7 +10,7 @@ API_KEY = config('GEMINI_API_KEY')
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = "ecomind-hackathon-secret-key-change-in-production"
-DEBUG = True
+DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
